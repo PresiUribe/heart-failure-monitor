@@ -1,4 +1,14 @@
 # Heart Failure Rural Monitoring — Corte 2
+## Integrantes
+
+| Integrante | Responsabilidad |
+|---|---|
+| Samuel Uribe | Integración: API FastAPI, seguridad, eventos en tiempo real, FHIR reactivo, Docker y contrato del tester |
+| Samuel Castillo Dávila | Base de datos: esquema PostgreSQL, modelos, validaciones y facturación en MongoDB |
+| Emilio Marquez | IA: modelo supervisado, clustering con aumento sintético, seudonimización y PACS (CAMUS) |
+| Juan Pablo López | Frontend: SPA React, canal WebSocket, alertas persistentes y paneles por rol |
+
+Salud Digital 2026-2 · Proyecto 2 (Corte 2)
 
 Sistema académico de Salud Digital orientado al seguimiento de **insuficiencia cardiaca**. La versión 2 conserva la base del Corte 1 (PostgreSQL, FastAPI, JWT, HAPI FHIR, soft delete, auditoría y frontend React) e incorpora PACS, dataset real, aprendizaje supervisado, clustering, MongoDB, remisiones y comportamiento reactivo en tiempo real.
 
