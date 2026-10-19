@@ -1,0 +1,144 @@
+services:
+  app-db:
+    image: postgres:16-alpine
+    container_name: heart_failure_app_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${APP_POSTGRES_DB:-heart_failure}
+      POSTGRES_USER: ${APP_POSTGRES_USER:-app_admin}
+      POSTGRES_PASSWORD: ${APP_POSTGRES_PASSWORD:-app_password}
+    volumes:
+      - app_postgres_data:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${APP_POSTGRES_USER:-app_admin} -d ${APP_POSTGRES_DB:-heart_failure}"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  hapi-db:
+    image: postgres:16-alpine
+    container_name: heart_failure_hapi_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${HAPI_POSTGRES_DB:-hapi}
+      POSTGRES_USER: ${HAPI_POSTGRES_USER:-hapi_admin}
+      POSTGRES_PASSWORD: ${HAPI_POSTGRES_PASSWORD:-hapi_password}
+    volumes: [hapi_postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${HAPI_POSTGRES_USER:-hapi_admin} -d ${HAPI_POSTGRES_DB:-hapi}"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  hapi-fhir:
+    image: ${HAPI_IMAGE:-hapiproject/hapi:v8.6.5-1}
+    container_name: heart_failure_hapi_fhir
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://hapi-db:5432/${HAPI_POSTGRES_DB:-hapi}
+      SPRING_DATASOURCE_USERNAME: ${HAPI_POSTGRES_USER:-hapi_admin}
+      SPRING_DATASOURCE_PASSWORD: ${HAPI_POSTGRES_PASSWORD:-hapi_password}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect
+      SPRING_JPA_PROPERTIES_HIBERNATE_SEARCH_ENABLED: "false"
+      HAPI_FHIR_FHIR_VERSION: R4
+      hapi.fhir.subscription.resthook_enabled: "true"
+      hapi.fhir.subscription.polling_interval_ms: "1000"
+      hapi.fhir.subscription.immediately_queued: "true"
+    ports: ["8080:8080"]
+    depends_on:
+      hapi-db: {condition: service_healthy}
+
+  mongo:
+    image: mongo:7
+    container_name: heart_failure_mongo
+    restart: unless-stopped
+    volumes: [mongo_data:/data/db]
+    ports: ["27017:27017"]
+
+  orthanc:
+    image: orthancteam/orthanc:26.9.1
+    container_name: heart_failure_orthanc
+    restart: unless-stopped
+    volumes:
+      - orthanc_data:/var/lib/orthanc/db
+      - ./orthanc/orthanc.json:/etc/orthanc/orthanc.json:ro
+    ports:
+      - "8042:8042"
+      - "4242:4242"
+
+  ml:
+    build:
+      context: .
+      dockerfile: ml_service/Dockerfile
+    container_name: heart_failure_ml
+    restart: unless-stopped
+    environment:
+      CRITICAL_RISK_THRESHOLD: ${CRITICAL_RISK_THRESHOLD:-0.70}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  api:
+    build: .
+    container_name: heart_failure_api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://app_admin:app_password@app-db:5432/heart_failure}
+      DATABASE_PROVIDER: ${DATABASE_PROVIDER:-Docker PostgreSQL}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-DEV-ONLY-CHANGE-ME}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-600}
+      FHIR_BASE_URL: http://hapi-fhir:8080/fhir
+      FHIR_HOOK_SECRET: ${FHIR_HOOK_SECRET:-DEV-FHIR-HOOK-CHANGE-ME}
+      MONGO_URL: ${MONGO_URL:-mongodb://mongo:27017}
+      MONGO_DATABASE: ${MONGO_DATABASE:-heart_failure_billing}
+      ML_BASE_URL: http://ml:8001
+      ORTHANC_BASE_URL: http://orthanc:8042
+      CRITICAL_RISK_THRESHOLD: ${CRITICAL_RISK_THRESHOLD:-0.70}
+      ALERT_ESCALATION_SECONDS: ${ALERT_ESCALATION_SECONDS:-120}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+    ports: ["8000:8000"]
+    depends_on:
+      app-db: {condition: service_healthy}
+      hapi-fhir: {condition: service_started}
+      mongo: {condition: service_started}
+      orthanc: {condition: service_started}
+      ml: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  frontend:
+    build: {context: ./frontend, dockerfile: Dockerfile}
+    container_name: heart_failure_frontend
+    restart: unless-stopped
+    ports: ["5173:80"]
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: heart_failure_cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://frontend:80
+    depends_on:
+      frontend: {condition: service_healthy}
+
+volumes:
+  app_postgres_data:
+  hapi_postgres_data:
+  mongo_data:
+  orthanc_data:
