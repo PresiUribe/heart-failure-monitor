@@ -1,0 +1,9 @@
+{
+  "Name": "HeartFailurePACS",
+  "RemoteAccessAllowed": true,
+  "AuthenticationEnabled": false,
+  "DicomAet": "HFM_PACS",
+  "HttpPort": 8042,
+  "DicomPort": 4242,
+  "StorageDirectory": "/var/lib/orthanc/db"
+}
