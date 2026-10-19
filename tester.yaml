@@ -1,0 +1,70 @@
+# Contrato del equipo.
+# Cuerpos aceptados (español o inglés):
+#   login: form o JSON {username, password}
+#   crear_paciente: {documento|document_number, nombre|first_name, apellido|last_name, ...}
+#       (correo/teléfono/dirección se aceptan pero no se guardan ni llegan a la IA)
+#   remitir: {especialista_id|specialist_id (documento, username o UUID; opcional), motivo|reason}
+#   ia_aprobar / ia_rechazar: {observaciones} (opcional)
+#   alerta_reconocer: {nota|note} (opcional)
+#   contable_crear: {paciente_id, servicio, valor}
+# Ajustar los nombres de campos al archivo plantilla_equipo.yaml
+# oficial si el docente entrega una versión con estructura adicional.
+base_url: "https://given-carbon-advertising-brunette.trycloudflare.com"
+fhir_base_url: "https://given-carbon-advertising-brunette.trycloudflare.com/fhir"
+
+usuarios:
+  admin: {username: "admin.demo", password: "AdminDemo2026!"}
+  medico: {username: "medico.demo", password: "MedicoDemo2026!"}
+  especialista: {username: "especialista.demo", password: "EspecialistaDemo2026!"}
+  paciente: {username: "paciente.demo", password: "PacienteDemo2026!"}
+  contable: {username: "contable.demo", password: "ContableDemo2026!"}
+
+rutas:
+  login: {method: POST, path: "/api/auth/login"}
+  yo: {method: GET, path: "/api/yo"}
+  ia_analizar: {method: POST, path: "/api/patients/{paciente_id}/ai/analyze"}
+  ia_reporte: {method: GET, path: "/api/ai/reports/{reporte_id}"}
+  ia_payload: {method: GET, path: "/api/ai/reports/{reporte_id}/payload"}
+  historia: {method: GET, path: "/api/patients/{paciente_id}/history"}
+  historia_pdf: {method: GET, path: "/api/patients/{paciente_id}/history.pdf"}
+  imagenes_paciente: {method: GET, path: "/api/patients/{paciente_id}/images"}
+  imagen: {method: GET, path: "/api/images/{imagen_id}"}
+  clusters: {method: GET, path: "/api/clusters"}
+  remitir: {method: POST, path: "/api/patients/{paciente_id}/referrals"}
+  remisiones: {method: GET, path: "/api/referrals"}
+  remision_aceptar: {method: POST, path: "/api/referrals/{remision_id}/accept"}
+  contable_listar: {method: GET, path: "/api/billing/invoices"}
+  notificaciones: {method: GET, path: "/api/notifications"}
+  notif_leer: {method: POST, path: "/api/notifications/{notificacion_id}/read"}
+  pendientes: {method: GET, path: "/api/pending"}
+  alertas: {method: GET, path: "/api/alerts"}
+  alerta_reconocer: {method: POST, path: "/api/alerts/{alerta_id}/acknowledge"}
+  fhir_observation: {method: POST, path: "/fhir/Observation"}
+  # Rutas de apoyo (si la plantilla oficial usa otros nombres de clave, copiar estas rutas).
+  crear_paciente: {method: POST, path: "/api/patients"}
+  ia_aprobar: {method: POST, path: "/api/ai/reports/{reporte_id}/approve"}
+  ia_rechazar: {method: POST, path: "/api/ai/reports/{reporte_id}/reject"}
+  contable_crear: {method: POST, path: "/api/billing/invoices"}
+  auditoria: {method: GET, path: "/api/audit/logs?limit=500"}
+  desbloquear: {method: POST, path: "/api/users/{usuario}/unlock"}
+  soft_delete: {method: DELETE, path: "/api/patients/{paciente_id}"}
+  restaurar: {method: POST, path: "/api/patients/{paciente_id}/restore"}
+  fhir_paciente: {method: GET, path: "/fhir/Patient?identifier={documento}"}
+  # Canal en tiempo real: WebSocket (los Quick Tunnels de Cloudflare no soportan SSE).
+  tiempo_real: {method: GET, path: "/api/events/ws?token={token}", tipo: websocket}
+  # Alternativa SSE (funciona en local / túnel con nombre):
+  tiempo_real_sse: {method: GET, path: "/api/events/stream?token={token}", tipo: sse}
+
+paciente_critico:
+  age: 72
+  anaemia: 1
+  creatinine_phosphokinase: 250
+  diabetes: 1
+  ejection_fraction: 20
+  high_blood_pressure: 1
+  platelets: 250000
+  serum_creatinine: 2.3
+  serum_sodium: 126
+  sex: 1
+  smoking: 0
+  time: 30
