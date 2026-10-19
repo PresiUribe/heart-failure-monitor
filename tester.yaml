@@ -68,3 +68,11 @@ paciente_critico:
   sex: 1
   smoking: 0
   time: 30
+
+
+# Canal en tiempo real declarado también como sección propia (R17).
+tiempo_real:
+  tipo: websocket
+  ruta: "/api/events/ws?token={token}"
+  path: "/api/events/ws?token={token}"
+  espera_segundos: 8
