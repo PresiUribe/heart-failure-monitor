@@ -1,4 +1,3 @@
-import json
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
@@ -9,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.models.audit_log import AuditLog
 from app.models.record_history import RecordHistory
+from app.security.campos import Cifrado, cifrar_campo
+import app.security.cadena  # noqa: F401  (registra el sellado de la cadena de auditoría, R28)
 
 
 def _json_safe(value: Any) -> Any:
@@ -22,11 +23,16 @@ def _json_safe(value: Any) -> Any:
 
 
 def model_snapshot(instance) -> dict:
+    """Instantánea para record_history. Los campos cifrados (R27) se guardan cifrados, no en claro."""
     mapper = inspect(instance).mapper
-    return {
-        column.key: _json_safe(getattr(instance, column.key))
-        for column in mapper.column_attrs
-    }
+    salida = {}
+    for column in mapper.column_attrs:
+        valor = getattr(instance, column.key)
+        tipo = column.columns[0].type
+        if isinstance(tipo, Cifrado):
+            valor = cifrar_campo(valor, tipo.contexto)
+        salida[column.key] = _json_safe(valor)
+    return salida
 
 
 def add_audit(
@@ -38,8 +44,11 @@ def add_audit(
     entity_id: uuid.UUID | None,
     details: dict | None = None,
 ) -> None:
+    # id y fecha se fijan aquí para que el sello de la cadena (R28) se calcule sin releer la base.
     db.add(
         AuditLog(
+            id=uuid.uuid4(),
+            created_at=datetime.utcnow(),
             user_id=user_id,
             action=action,
             entity_type=entity_type,

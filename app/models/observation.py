@@ -59,6 +59,7 @@ class Observation(Base):
         server_default=func.now(),
     )
     fhir_observation_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    origen: Mapped[str | None] = mapped_column(String(80), nullable=True)  # NULL = registrada aquí
 
     is_active: Mapped[bool] = mapped_column(
         Boolean,

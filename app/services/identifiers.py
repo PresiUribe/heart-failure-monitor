@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.security.campos import indice_ciego
 from app.models.patient import Patient
 from app.models.user import User
 
@@ -54,7 +55,7 @@ def resolve_patient_identifier(
     """Resolve a patient by document number, patient_code or internal UUID."""
     value = str(identifier).strip()
     conditions = [
-        Patient.document_number == value,
+        Patient.document_hash == indice_ciego(value),  # R27: el documento está cifrado; se busca por índice ciego
         Patient.patient_code == value,
     ]
     parsed = _as_uuid(value)

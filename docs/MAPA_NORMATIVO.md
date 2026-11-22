@@ -26,3 +26,20 @@
 - Ley 2015 de 2020: https://www.minsalud.gov.co/sites/rid/Lists/BibliotecaDigital/RIDE/INEC/IGUB/ley-2015-de-2020.pdf
 - Resolución 866 de 2021: https://www.minsalud.gov.co/sites/rid/Lists/BibliotecaDigital/RIDE/DE/DIJ/resolucion-866-de-2021.pdf
 - Resolución 1995 de 1999: portal de normatividad del Ministerio de Salud.
+
+## Controles del proyecto final (R23–R33)
+
+| Norma / referencia | Principio | Control técnico implementado | Requisito |
+|---|---|---|---|
+| Ley 1581 de 2012, art. 4 (seguridad, confidencialidad) | Medidas técnicas que impidan el acceso no autorizado | Cifrado AES-256-GCM de documento, teléfono, dirección y vereda, con índice ciego para buscar; llave en variable de entorno | R27 |
+| Ley 1581 de 2012, arts. 4 y 17 (transferencia de datos sensibles) | Autorización previa y finalidad | Consent registrado por paciente **y por institución** destino; sin él no sale nada (409); revocable | R32 |
+| Ley 1581 de 2012, art. 4 (finalidad, minimización) | Solo lo necesario | Bundle sin teléfono, correo ni dirección; solo el reporte de IA aprobado; el LLM recibe solo el seudónimo PSN- | R24, R32 |
+| Ley 1581 de 2012 (deber de demostrar cumplimiento) | Trazabilidad | Auditoría del payload exacto enviado al LLM y de cada herramienta del agente | R24 |
+| Resolución 1995 de 1999 (integridad y custodia de la historia) | La historia no se altera sin dejar rastro | Auditoría con cadena de hashes HMAC, disparador de solo agregar y verificación por el admin | R28 |
+| Resolución 1995 de 1999 (reserva) | Acceso solo a quien corresponde | Herramientas del agente con permisos por rol validados en el backend; defensa contra prompt injection con registro y bloqueo temporal | R24, R25 |
+| Resolución 866 de 2021 (intercambio de datos clínicos) | Interoperabilidad con estándares | Remisiones en FHIR R4 (Bundle, ServiceRequest, Observation LOINC/UCUM, DiagnosticReport, Consent, Task, SNOMED CT); errores como OperationOutcome | R30 |
+| Resolución 866 de 2021 / Ley 2015 de 2020 | Intercambio seguro entre instituciones | Credenciales de sistema por institución (OAuth2 o API key) que no abren la API clínica; firma HMAC opcional; webhook FHIR con secreto | R29, R31 |
+| Resolución 3100 de 2019 (registros y disponibilidad) | Registros completos y disponibles | Remisiones externas con estado, intentos y reenvío; consulta de estado por el socio (`GET /interop/Task/{id}`) | R30, R33 |
+| Guías de práctica clínica (pertinencia) | Decisión apoyada en evidencia | Agente RAG que cita documento y fragmento, y se abstiene cuando no hay soporte | R23 |
+
+El modelo de amenazas que justifica cada control está en `docs/STRIDE.md`.

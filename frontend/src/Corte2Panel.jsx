@@ -37,6 +37,7 @@ export default function Corte2Panel({ me, selectedPatientId, patients = [], user
   const [metrics, setMetrics] = useState(null);
   const [activeAlerts, setActiveAlerts] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [cadena, setCadena] = useState(null);
   const [adminUsers, setAdminUsers] = useState([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -224,6 +225,24 @@ export default function Corte2Panel({ me, selectedPatientId, patients = [], user
     });
   }
 
+  async function verificarCadena() {
+    await run(async () => {
+      const r = await api("/audit/verificar");
+      setCadena(r);
+      r.integra ? success(`Cadena de auditoría íntegra (${r.registros} registros).`) : fail(new Error(`Auditoría alterada: ${r.primer_problema?.detalle}`));
+    });
+  }
+
+  async function rejectReferral(id) {
+    const motivo = window.prompt("Motivo del rechazo (obligatorio):", "");
+    if (!motivo) return;
+    await run(async () => {
+      await api(`/referrals/${id}/reject`, { method: "POST", body: JSON.stringify({ motivo }) });
+      await Promise.all([loadClinicalModules(), loadNotifications()]);
+      success("Remisión rechazada; quien remitió recibió el motivo.");
+    });
+  }
+
   async function acceptReferral(id) {
     await run(async () => {
       await api(`/referrals/${id}/accept`, { method: "POST" });
@@ -314,8 +333,12 @@ export default function Corte2Panel({ me, selectedPatientId, patients = [], user
           </div>
         </SmallCard>
         <SmallCard title={`Auditoría (últimos ${auditLogs.length})`}>
-          <div className="c2-table-wrap"><table><thead><tr><th>Fecha</th><th>Acción</th><th>Recurso</th><th>Usuario</th></tr></thead><tbody>
-            {auditLogs.map((l) => <tr key={l.id}><td>{new Date(l.created_at).toLocaleTimeString("es-CO")}</td><td>{l.action}</td><td>{l.entity_type} {l.entity_id ? l.entity_id.slice(0, 8) : ""}</td><td>{l.user_id ? l.user_id.slice(0, 8) : "sistema"}</td></tr>)}
+          <div className="c2-actions">
+            <button onClick={verificarCadena}>Verificar cadena de auditoría</button>
+            {cadena && <span className="pill">{cadena.integra ? `Íntegra · ${cadena.registros} registros` : `ALTERADA · ${cadena.primer_problema?.detalle || ""}`}</span>}
+          </div>
+          <div className="c2-table-wrap"><table><thead><tr><th>#</th><th>Fecha</th><th>Acción</th><th>Recurso</th><th>Usuario</th><th>Hash</th></tr></thead><tbody>
+            {auditLogs.map((l) => <tr key={l.id}><td>{l.seq ?? ""}</td><td>{new Date(l.created_at).toLocaleTimeString("es-CO")}</td><td>{l.action}</td><td>{l.entity_type} {l.entity_id ? l.entity_id.slice(0, 8) : ""}</td><td>{l.user_id ? l.user_id.slice(0, 8) : "sistema"}</td><td><code>{l.hash ? l.hash.slice(0, 10) : ""}</code></td></tr>)}
           </tbody></table></div>
         </SmallCard>
       </div>}
@@ -368,7 +391,7 @@ export default function Corte2Panel({ me, selectedPatientId, patients = [], user
               <label className="field"><span>Motivo</span><input value={referralForm.reason} onChange={(e) => setReferralForm({ ...referralForm, reason: e.target.value })} /></label>
               <button className="primary">Remitir</button>
             </form>}
-            <div className="c2-list">{referrals.map((r) => <div className="c2-row" key={r.id}><div><strong>{r.estado}</strong><span>{r.motivo}</span></div>{role === "especialista" && r.estado === "pendiente" && <button onClick={() => acceptReferral(r.id)}>Aceptar</button>}</div>)}</div>
+            <div className="c2-list">{referrals.map((r) => <div className="c2-row" key={r.id}><div><strong>{r.estado}{r.origen === "externo" ? ` · ${r.institucion_nombre}` : ""}</strong><span>{r.motivo}</span>{r.respuesta && <small>Respuesta: {r.respuesta}</small>}</div>{role === "especialista" && r.estado === "pendiente" && <div className="c2-actions"><button onClick={() => acceptReferral(r.id)}>Aceptar</button><button onClick={() => rejectReferral(r.id)}>Rechazar</button></div>}</div>)}</div>
           </SmallCard>
         </div>
 

@@ -456,3 +456,85 @@ select {
 .c2-alert-item { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:4px 0; border-top:1px solid rgba(255,255,255,.25); }
 .c2-alert-item button { background:#fff; color:#b42318; border:0; border-radius:6px; padding:4px 10px; font-weight:600; cursor:pointer; }
 @keyframes c2pulse { 0%,100% { box-shadow: 0 4px 14px rgba(180,35,24,.35); } 50% { box-shadow: 0 4px 22px rgba(180,35,24,.7); } }
+
+/* Semana 12-13: asistente clínico (RAG y agente) */
+.asistente h2 { margin-bottom: 0; }
+.as-tabs { display:flex; gap:6px; background:#eef3f5; padding:4px; border-radius:10px; }
+.as-tabs button { border:0; background:transparent; padding:7px 12px; border-radius:8px; font-weight:600; color:#4c5a62; }
+.as-tabs button.activo { background:white; color:#246b57; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+.as-tab { display:grid; gap:12px; margin-top:14px; }
+.as-tab > p.muted, .as-cabecera p { margin:0; }
+.as-ejemplos { display:flex; flex-wrap:wrap; gap:6px; }
+.as-ejemplos button { border:1px dashed #b9cdd4; background:#f7fbfc; color:#3b5560; border-radius:999px; padding:5px 10px; font-size:12.5px; }
+.as-form, .as-enviar { display:grid; gap:10px; }
+.as-enviar { grid-template-columns:1fr auto; align-items:end; }
+.as-form textarea, .as-enviar textarea { width:100%; border:1px solid #ccd7dc; border-radius:10px; padding:10px 11px; font:inherit; resize:vertical; }
+.as-opciones { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+.as-check { display:flex; gap:6px; align-items:center; font-size:13.5px; flex:1; min-width:220px; }
+.as-select { width:auto; }
+.as-resultado { border:1px solid #e2e9ec; border-radius:12px; padding:14px; display:grid; gap:10px; background:#fbfdfd; }
+.as-meta { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.as-badge { font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:999px; }
+.as-badge.ok { background:#e6f4ee; color:#1d6b50; }
+.as-badge.info { background:#eaf2fb; color:#2d5f93; }
+.as-badge.warn { background:#fff4e0; color:#8a5300; }
+.as-texto p { margin:0 0 6px; line-height:1.5; }
+.as-vineta { padding-left:6px; margin-bottom:4px; line-height:1.5; }
+.as-espacio { height:4px; }
+.cita { display:inline-block; font-size:11px; font-weight:700; color:#246b57; background:#e6f4ee; border-radius:5px; padding:0 5px; margin:0 1px; }
+.as-fuentes { display:grid; gap:8px; border-top:1px solid #e5ecef; padding-top:10px; }
+.as-fuente { display:flex; gap:10px; align-items:flex-start; }
+.as-fuente > div { display:grid; gap:2px; min-width:0; }
+.as-fuente small { color:#6b7880; overflow-wrap:anywhere; }
+.as-fuente-tit { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.as-estado { font-size:11px; padding:2px 7px; border-radius:999px; background:#eef3f5; color:#4c5a62; }
+.as-pill-inicio { justify-self:start; }
+.as-estado.aprobado { background:#e6f4ee; color:#1d6b50; }
+.as-conv { display:flex; flex-wrap:wrap; gap:14px; align-items:center; font-size:13px; color:#4c5a62; }
+.as-conv code { background:#eef3f5; padding:2px 6px; border-radius:6px; }
+.as-conv button { border:1px solid #cfdade; background:white; border-radius:8px; padding:5px 9px; font-size:12.5px; }
+.as-chat { border:1px solid #e2e9ec; border-radius:12px; padding:12px; background:#f8fafb; display:grid; gap:10px; max-height:460px; overflow:auto; }
+.as-vacio { margin:0; }
+.as-msg { max-width:85%; padding:10px 12px; border-radius:12px; background:white; border:1px solid #e2e9ec; }
+.as-msg p { margin:0; }
+.as-msg.yo { justify-self:end; background:#246b57; color:white; border-color:#246b57; }
+.as-msg.agente { justify-self:start; }
+.as-msg.sistema { justify-self:center; background:#fff4e0; border-color:#f3d9a6; font-size:13px; }
+.as-msg.pensando { color:#6b7880; font-style:italic; }
+.as-herr { display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; align-items:center; }
+.as-herr small { color:#8a969d; margin-left:4px; }
+.as-aprobacion { border:2px solid #e6a23c; background:#fffaf0; border-radius:12px; padding:14px; display:grid; gap:10px; }
+.as-accion { display:grid; gap:4px; font-size:13.5px; overflow-wrap:anywhere; }
+.as-botones { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.as-botones input { flex:1; min-width:180px; border:1px solid #ccd7dc; border-radius:10px; padding:9px 10px; }
+.as-rechazar { border:0; background:#b42318; color:white; padding:11px 15px; border-radius:10px; font-weight:700; }
+.as-rechazar:disabled { opacity:.5; }
+@media (max-width: 760px) { .as-msg { max-width:100%; } .as-enviar { grid-template-columns:1fr; } }
+
+/* Pestañas del panel clínico */
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  margin: 0 0 18px;
+  background: rgba(244, 247, 248, 0.94);
+  backdrop-filter: blur(6px);
+  border: 1px solid #e2e9ec;
+  border-radius: 14px;
+}
+.tab {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #4a5b66;
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.tab:hover { background: #e9f1ee; color: #17202a; }
+.tab.activa { background: white; color: #226b57; border-color: #cfe2da; box-shadow: 0 2px 8px rgba(27, 46, 57, 0.06); }
+[hidden] { display: none !important; }

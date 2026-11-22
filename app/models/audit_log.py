@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -30,3 +30,7 @@ class AuditLog(Base):
         nullable=False,
         server_default=func.now(),
     )
+    # R28: cadena de hashes. Se sellan al confirmar la transacción (app/security/cadena.py).
+    seq: Mapped[int | None] = mapped_column(BigInteger, unique=True, nullable=True)
+    prev_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    hash: Mapped[str | None] = mapped_column(String(64), nullable=True)

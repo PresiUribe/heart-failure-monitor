@@ -14,6 +14,9 @@ class AuditLogResponse(BaseModel):
     entity_id: uuid.UUID | None
     details: dict | None
     created_at: datetime
+    seq: int | None = None        # R28: posición en la cadena
+    prev_hash: str | None = None
+    hash: str | None = None
 
 
 class RecordHistoryResponse(BaseModel):

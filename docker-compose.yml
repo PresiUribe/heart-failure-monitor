@@ -1,6 +1,7 @@
 services:
   app-db:
-    image: postgres:16-alpine
+    # PostgreSQL 16 con la extensión pgvector (RAG, Semana 12)
+    image: pgvector/pgvector:pg16
     container_name: heart_failure_app_db
     restart: unless-stopped
     environment:
@@ -76,11 +77,13 @@ services:
     restart: unless-stopped
     environment:
       CRITICAL_RISK_THRESHOLD: ${CRITICAL_RISK_THRESHOLD:-0.70}
+      EMBED_MODEL: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=5)"]
       interval: 10s
       timeout: 5s
-      retries: 15
+      retries: 30
+      start_period: 60s
 
   api:
     build: .
@@ -103,6 +106,23 @@ services:
       CRITICAL_RISK_THRESHOLD: ${CRITICAL_RISK_THRESHOLD:-0.70}
       ALERT_ESCALATION_SECONDS: ${ALERT_ESCALATION_SECONDS:-120}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      RAG_METODO: ${RAG_METODO:-hibrido}
+      RAG_UMBRAL_COS: ${RAG_UMBRAL_COS:-0.35}
+      RAG_UMBRAL_BM25: ${RAG_UMBRAL_BM25:-4.0}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+      AGENTE_MODELO: ${AGENTE_MODELO:-auto}
+      AGENTE_MAX_SIMULTANEAS: ${AGENTE_MAX_SIMULTANEAS:-3}
+      AGENTE_TIMEOUT_S: ${AGENTE_TIMEOUT_S:-90}
+      AGENTE_MAX_LLAMADAS_MODELO: ${AGENTE_MAX_LLAMADAS_MODELO:-8}
+      # Seguridad (proyecto final): R27 llave de cifrado de campos, R28 llave de la cadena de auditoría
+      CAMPOS_CLAVE: ${CAMPOS_CLAVE:-}
+      AUDITORIA_CLAVE: ${AUDITORIA_CLAVE:-}
+      # Interoperabilidad (proyecto final)
+      INTEROP_NOMBRE: ${INTEROP_NOMBRE:-Heart Failure Monitor (UAO)}
+      INTEROP_SISTEMA_BASE: ${INTEROP_SISTEMA_BASE:-https://hfmonitor.uao.edu.co/fhir}
+      INTEROP_SECRETO_FEDERADO: ${INTEROP_SECRETO_FEDERADO:-secreto-federado-del-curso-solo-demo}
+      INTEROP_CLAVE_CIFRADO: ${INTEROP_CLAVE_CIFRADO:-}
     ports: ["8000:8000"]
     depends_on:
       app-db: {condition: service_healthy}
@@ -134,6 +154,18 @@ services:
     container_name: heart_failure_cloudflared
     restart: unless-stopped
     command: tunnel --no-autoupdate --url http://frontend:80
+    depends_on:
+      frontend: {condition: service_healthy}
+
+  # Opcional: túnel con nombre (URL fija durante toda la evaluación).
+  # Uso: definir CLOUDFLARE_TUNNEL_TOKEN en .env y ejecutar
+  #   docker compose --profile named up -d   (y detener el servicio cloudflared rápido)
+  cloudflared-named:
+    image: cloudflare/cloudflared:latest
+    container_name: heart_failure_cloudflared_named
+    restart: unless-stopped
+    profiles: ["named"]
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
     depends_on:
       frontend: {condition: service_healthy}
 

@@ -3,9 +3,10 @@ from datetime import date, datetime
 
 from sqlalchemy import Boolean, CheckConstraint, Date, DateTime, ForeignKey, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, validates
 
 from app.database import Base
+from app.security.campos import Cifrado, indice_ciego
 
 
 class Patient(Base):
@@ -28,15 +29,23 @@ class Patient(Base):
         nullable=False,
         server_default=text("('PAT-' || lpad(nextval('patient_code_seq')::text, 6, '0'))"),
     )
-    document_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    document_type: Mapped[str] = mapped_column(String(10), nullable=False, server_default="CC")
+    # R27: cifrados con AES-256-GCM en la base; la aplicación los ve en claro.
+    document_number: Mapped[str] = mapped_column(Cifrado("patients.document_number"), nullable=False)
+    document_hash: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)  # índice ciego (búsqueda/unicidad)
+    phone: Mapped[str | None] = mapped_column(Cifrado("patients.phone"), nullable=True)
+    address: Mapped[str | None] = mapped_column(Cifrado("patients.address"), nullable=True)
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     birth_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     sex: Mapped[str | None] = mapped_column(String(20), nullable=True)
     municipality: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    rural_area: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    rural_area: Mapped[str | None] = mapped_column(Cifrado("patients.rural_area"), nullable=True)  # vereda: parte de la dirección
     primary_diagnosis: Mapped[str | None] = mapped_column(String(255), nullable=True)
     fhir_patient_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Interoperabilidad (005): seudónimo federado entre instituciones y de dónde llegó el paciente
+    sid_federado: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    origen_institucion: Mapped[str | None] = mapped_column(String(60), nullable=True)
 
     is_active: Mapped[bool] = mapped_column(
         Boolean,
@@ -59,3 +68,8 @@ class Patient(Base):
         ForeignKey("users.id"),
         nullable=True,
     )
+
+    @validates("document_number")
+    def _indexar_documento(self, _key, valor):
+        self.document_hash = indice_ciego(valor)
+        return valor
