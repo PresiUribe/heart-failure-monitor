@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, clearToken, getToken, login } from "./api";
 import Corte2Panel from "./Corte2Panel";
+import AsistentePanel from "./AsistentePanel";
+import InteropPanel from "./InteropPanel";
 
 function Card({ title, children, className = "" }) {
   return <section className={`card ${className}`}><h2>{title}</h2>{children}</section>;
@@ -76,6 +78,8 @@ function PatientOnlyProfile({ me, onLogout }) {
 export default function App() {
   const [tokenPresent, setTokenPresent] = useState(Boolean(getToken()));
   const [me, setMe] = useState(null);
+  const [pestana, setPestana] = useState(() => { try { return sessionStorage.getItem("hf_pestana") || "paciente"; } catch { return "paciente"; } });
+  const elegirPestana = (id) => { setPestana(id); try { sessionStorage.setItem("hf_pestana", id); } catch {} window.scrollTo({ top: 0, behavior: "smooth" }); };
   const [patients, setPatients] = useState([]);
   const [allPatients, setAllPatients] = useState([]);
   const [users, setUsers] = useState([]);
@@ -114,6 +118,7 @@ export default function App() {
   const isPatient = ["PACIENTE", "PACIENTE_CUIDADOR"].includes(me?.role?.code);
   const isContable = me?.role?.code === "CONTABLE";
   const isMedico = ["MEDICO", "MEDICO_RURAL"].includes(me?.role?.code);
+  const isEspecialista = me?.role?.code === "ESPECIALISTA";
   const selectedPatient = useMemo(() => patients.find((p) => p.id === selectedPatientId), [patients, selectedPatientId]);
   const selectedAssignmentUser = useMemo(() => users.find((u) => u.id === assignmentForm.user_id), [users, assignmentForm.user_id]);
   const activeEncounters = encounters.filter((x) => x.is_active);
@@ -221,7 +226,7 @@ export default function App() {
   async function createObservation(e) { e.preventDefault(); await run(async () => { const data = await api(`/patients/${selectedPatientId}/observations`, { method: "POST", body: JSON.stringify({ ...observationForm, value_numeric: Number(observationForm.value_numeric), encounter_id: activeEncounters[0]?.id || null, components: [] }) }); await loadClinical(); showSuccess("Observation creada.", data); }); }
   async function createBloodPressure(e) { e.preventDefault(); await run(async () => { const data = await api(`/patients/${selectedPatientId}/observations/blood-pressure`, { method: "POST", body: JSON.stringify({ encounter_id: activeEncounters[0]?.id || null, systolic: Number(bpForm.systolic), diastolic: Number(bpForm.diastolic) }) }); await loadClinical(); showSuccess("Presión arterial registrada.", data); }); }
   async function syncFhir() { await run(async () => { const data = await api(`/fhir/patients/${selectedPatientId}/sync-all`, { method: "POST" }); await loadPatients(); await loadClinical(); showSuccess("Sincronización FHIR completada.", data); }); }
-  async function updateObservation(id, currentValue) { const value = window.prompt("Nuevo valor:", currentValue ?? ""); if (value === null) return; await run(async () => { const data = await api(`/observations/${id}`, { method: "PUT", body: JSON.stringify({ value_numeric: Number(value) }) }); await loadClinical(); showSuccess("Soft edit ejecutado.", data); }); }
+  async function updateObservation(id, currentValue) { const value = window.prompt("Nuevo valor:", currentValue ?? ""); if (value === null) return; await run(async () => { const data = await api(`/observations/${id}`, { method: "PUT", body: JSON.stringify({ value_numeric: Number(value) }) }); await loadClinical(); showSuccess("Valor actualizado. El valor anterior queda en el historial.", data); }); }
   async function deleteObservation(id) { if (!confirm("¿Enviar esta observación a la papelera?")) return; await run(async () => { await api(`/observations/${id}`, { method: "DELETE" }); await loadClinical(); showSuccess("Observación enviada a la papelera."); }); }
   async function deleteEncounter(id) { if (!confirm("¿Enviar este encuentro a la papelera?")) return; await run(async () => { await api(`/encounters/${id}`, { method: "DELETE" }); await loadClinical(); showSuccess("Encounter enviado a la papelera."); }); }
   async function restoreObservation(id) { await run(async () => { await api(`/observations/${id}/restore`, { method: "POST" }); await loadClinical(); showSuccess("Observación restaurada."); }); }
@@ -239,6 +244,16 @@ export default function App() {
       </form><Status message={statusMessage} error={error} />
     </div></main>
   );
+
+  const pestanas = [
+    ["paciente", "Paciente y registros"],
+    ["seguimiento", isAdmin ? "Seguimiento y auditoría" : "IA, alertas y remisiones"],
+    ...((isMedico || isEspecialista) ? [["asistente", "Asistente clínico"]] : []),
+    ...((isMedico || isEspecialista || isAdmin) ? [["instituciones", "Otras instituciones"]] : []),
+    ...(isAdmin ? [["admin", "Administración"]] : []),
+    ["api", "Respuesta API"],
+  ];
+  const actual = pestanas.some(([id]) => id === pestana) ? pestana : "paciente";
 
   if (isPatient) return (
     <>
@@ -269,6 +284,45 @@ export default function App() {
           <Card title="FHIR"><p className="muted">Sincroniza Patient, Encounter y Observation del paciente.</p><button className="primary" onClick={syncFhir} disabled={!selectedPatientId || busy}>Sincronizar todo con HAPI FHIR</button></Card>
         </div>
 
+        <nav className="tabs" role="tablist">
+          {pestanas.map(([id, nombre]) => <button key={id} role="tab" aria-selected={actual === id}
+            className={actual === id ? "tab activa" : "tab"} onClick={() => elegirPestana(id)}>{nombre}</button>)}
+        </nav>
+
+        {/* Las pestañas ocultan, no desmontan: los canales en vivo y los formularios conservan su estado. */}
+        <div hidden={actual !== "paciente"}>
+        {(isAdmin || isMedico) && <Card title="Crear paciente"><form onSubmit={createPatient} className="form-grid columns-4">
+          <Field label="Documento" value={patientForm.document_number} onChange={(e) => setPatientForm({ ...patientForm, document_number: e.target.value })} /><Field label="Nombres" value={patientForm.first_name} onChange={(e) => setPatientForm({ ...patientForm, first_name: e.target.value })} /><Field label="Apellidos" value={patientForm.last_name} onChange={(e) => setPatientForm({ ...patientForm, last_name: e.target.value })} /><Field label="Fecha nacimiento" type="date" value={patientForm.birth_date} onChange={(e) => setPatientForm({ ...patientForm, birth_date: e.target.value })} />
+          <Select label="Sexo" value={patientForm.sex} onChange={(e) => setPatientForm({ ...patientForm, sex: e.target.value })}><option value="MALE">MALE</option><option value="FEMALE">FEMALE</option><option value="OTHER">OTHER</option><option value="UNKNOWN">UNKNOWN</option></Select><Field label="Municipio" value={patientForm.municipality} onChange={(e) => setPatientForm({ ...patientForm, municipality: e.target.value })} /><Field label="Zona rural" value={patientForm.rural_area} onChange={(e) => setPatientForm({ ...patientForm, rural_area: e.target.value })} /><Field label="Diagnóstico" value={patientForm.primary_diagnosis} onChange={(e) => setPatientForm({ ...patientForm, primary_diagnosis: e.target.value })} /><button className="primary">Crear paciente</button>
+        </form></Card>}
+
+        <div className="grid two">
+          <Card title="Crear Encounter"><form onSubmit={createEncounter} className="form-grid"><Select label="Tipo" value={encounterForm.encounter_type} onChange={(e) => setEncounterForm({ ...encounterForm, encounter_type: e.target.value })}><option value="CONSULTA_RURAL">CONSULTA_RURAL</option><option value="CONTROL">CONTROL</option><option value="TELECONSULTA">TELECONSULTA</option><option value="REMISION">REMISION</option><option value="URGENCIA">URGENCIA</option></Select><Field label="Motivo" value={encounterForm.reason} onChange={(e) => setEncounterForm({ ...encounterForm, reason: e.target.value })} /><Field label="Nota clínica" value={encounterForm.clinical_notes} onChange={(e) => setEncounterForm({ ...encounterForm, clinical_notes: e.target.value })} /><button className="primary" disabled={!selectedPatientId}>Crear Encounter</button></form></Card>
+          <Card title="Registrar Observation"><form onSubmit={createObservation} className="form-grid"><Select label="Tipo" value={observationForm.code} onChange={(e) => { const p = e.target.value === "29463-7" ? { code: "29463-7", display: "Body weight", unit: "kg", value_numeric: "82.5" } : { code: "8867-4", display: "Heart rate", unit: "beats/min", value_numeric: "92" }; setObservationForm({ ...observationForm, ...p }); }}><option value="29463-7">Peso</option><option value="8867-4">Frecuencia cardiaca</option></Select><Field label="Valor" type="number" step="0.1" value={observationForm.value_numeric} onChange={(e) => setObservationForm({ ...observationForm, value_numeric: e.target.value })} /><Field label="Unidad" value={observationForm.unit} readOnly /><button className="primary" disabled={!selectedPatientId}>Registrar</button></form></Card>
+        </div>
+        <Card title="Registrar presión arterial"><form onSubmit={createBloodPressure} className="inline-form"><Field label="Sistólica" type="number" value={bpForm.systolic} onChange={(e) => setBpForm({ ...bpForm, systolic: e.target.value })} /><Field label="Diastólica" type="number" value={bpForm.diastolic} onChange={(e) => setBpForm({ ...bpForm, diastolic: e.target.value })} /><button className="primary" disabled={!selectedPatientId}>Registrar presión</button></form></Card>
+
+        <div className="grid two">
+          <Card title={`Encounters activos (${activeEncounters.length})`}><div className="list">{activeEncounters.length === 0 && <p className="muted">Sin registros.</p>}{activeEncounters.map((x) => <article key={x.id} className="list-item"><strong>{x.encounter_type}</strong><span>{x.reason}</span><small>{formatDate(x.start_at)}</small><div className="actions"><button onClick={() => deleteEncounter(x.id)}>Eliminar</button></div></article>)}</div></Card>
+          <Card title={`Observations activas (${activeObservations.length})`}><div className="list">{activeObservations.length === 0 && <p className="muted">Sin registros.</p>}{activeObservations.map((x) => <article key={x.id} className="list-item"><div className="row-between"><strong>{x.display || x.code}</strong><span className="pill">{x.code}</span></div>{x.value_type === "NUMERIC" && <span className="big-value">{x.value_numeric} {x.unit}</span>}{x.value_type === "COMPONENTS" && x.components?.map((c) => <span key={c.id}>{c.display}: <strong>{c.value_numeric} {c.unit}</strong></span>)}<div className="actions">{x.value_type === "NUMERIC" && <button onClick={() => updateObservation(x.id, x.value_numeric)}>Editar</button>}<button onClick={() => deleteObservation(x.id)}>Eliminar</button></div></article>)}</div></Card>
+        </div>
+
+        </div>
+
+        <div hidden={actual !== "seguimiento"}>
+        <Corte2Panel me={me} selectedPatientId={selectedPatientId} patients={patients} users={users} onMessage={(ok, err) => { setStatusMessage(ok); setError(err); }} />
+
+        </div>
+
+        {(isMedico || isEspecialista) && <div hidden={actual !== "asistente"}>
+        {(isMedico || isEspecialista) && <AsistentePanel me={me} patient={selectedPatient} />}
+        </div>}
+
+        {(isMedico || isEspecialista || isAdmin) && <div hidden={actual !== "instituciones"}>
+        {(isMedico || isEspecialista || isAdmin) && <InteropPanel me={me} selectedPatient={selectedPatient} onMessage={(ok, err) => { setStatusMessage(ok); setError(err); }} />}
+        </div>}
+
+        {isAdmin && <div hidden={actual !== "admin"}>
         {isAdmin && <div className="grid two">
           <Card title="Crear usuario"><form onSubmit={createUser} className="form-grid">
             <Select label="Tipo documento" value={userForm.document_type} onChange={(e) => setUserForm({ ...userForm, document_type: e.target.value })}><option value="CC">CC</option><option value="CE">CE</option><option value="TI">TI</option><option value="PA">PA</option><option value="PPT">PPT</option><option value="RC">RC</option></Select>
@@ -335,22 +389,6 @@ export default function App() {
           </p>
         </Card>}
 
-        {(isAdmin || isMedico) && <Card title="Crear paciente"><form onSubmit={createPatient} className="form-grid columns-4">
-          <Field label="Documento" value={patientForm.document_number} onChange={(e) => setPatientForm({ ...patientForm, document_number: e.target.value })} /><Field label="Nombres" value={patientForm.first_name} onChange={(e) => setPatientForm({ ...patientForm, first_name: e.target.value })} /><Field label="Apellidos" value={patientForm.last_name} onChange={(e) => setPatientForm({ ...patientForm, last_name: e.target.value })} /><Field label="Fecha nacimiento" type="date" value={patientForm.birth_date} onChange={(e) => setPatientForm({ ...patientForm, birth_date: e.target.value })} />
-          <Select label="Sexo" value={patientForm.sex} onChange={(e) => setPatientForm({ ...patientForm, sex: e.target.value })}><option value="MALE">MALE</option><option value="FEMALE">FEMALE</option><option value="OTHER">OTHER</option><option value="UNKNOWN">UNKNOWN</option></Select><Field label="Municipio" value={patientForm.municipality} onChange={(e) => setPatientForm({ ...patientForm, municipality: e.target.value })} /><Field label="Zona rural" value={patientForm.rural_area} onChange={(e) => setPatientForm({ ...patientForm, rural_area: e.target.value })} /><Field label="Diagnóstico" value={patientForm.primary_diagnosis} onChange={(e) => setPatientForm({ ...patientForm, primary_diagnosis: e.target.value })} /><button className="primary">Crear paciente</button>
-        </form></Card>}
-
-        <div className="grid two">
-          <Card title="Crear Encounter"><form onSubmit={createEncounter} className="form-grid"><Select label="Tipo" value={encounterForm.encounter_type} onChange={(e) => setEncounterForm({ ...encounterForm, encounter_type: e.target.value })}><option value="CONSULTA_RURAL">CONSULTA_RURAL</option><option value="CONTROL">CONTROL</option><option value="TELECONSULTA">TELECONSULTA</option><option value="REMISION">REMISION</option><option value="URGENCIA">URGENCIA</option></Select><Field label="Motivo" value={encounterForm.reason} onChange={(e) => setEncounterForm({ ...encounterForm, reason: e.target.value })} /><Field label="Nota clínica" value={encounterForm.clinical_notes} onChange={(e) => setEncounterForm({ ...encounterForm, clinical_notes: e.target.value })} /><button className="primary" disabled={!selectedPatientId}>Crear Encounter</button></form></Card>
-          <Card title="Registrar Observation"><form onSubmit={createObservation} className="form-grid"><Select label="Tipo" value={observationForm.code} onChange={(e) => { const p = e.target.value === "29463-7" ? { code: "29463-7", display: "Body weight", unit: "kg", value_numeric: "82.5" } : { code: "8867-4", display: "Heart rate", unit: "beats/min", value_numeric: "92" }; setObservationForm({ ...observationForm, ...p }); }}><option value="29463-7">Peso</option><option value="8867-4">Frecuencia cardiaca</option></Select><Field label="Valor" type="number" step="0.1" value={observationForm.value_numeric} onChange={(e) => setObservationForm({ ...observationForm, value_numeric: e.target.value })} /><Field label="Unidad" value={observationForm.unit} readOnly /><button className="primary" disabled={!selectedPatientId}>Registrar</button></form></Card>
-        </div>
-        <Card title="Registrar presión arterial"><form onSubmit={createBloodPressure} className="inline-form"><Field label="Sistólica" type="number" value={bpForm.systolic} onChange={(e) => setBpForm({ ...bpForm, systolic: e.target.value })} /><Field label="Diastólica" type="number" value={bpForm.diastolic} onChange={(e) => setBpForm({ ...bpForm, diastolic: e.target.value })} /><button className="primary" disabled={!selectedPatientId}>Registrar presión</button></form></Card>
-
-        <div className="grid two">
-          <Card title={`Encounters activos (${activeEncounters.length})`}><div className="list">{activeEncounters.length === 0 && <p className="muted">Sin registros.</p>}{activeEncounters.map((x) => <article key={x.id} className="list-item"><strong>{x.encounter_type}</strong><span>{x.reason}</span><small>{formatDate(x.start_at)}</small><div className="actions"><button onClick={() => deleteEncounter(x.id)}>Soft delete</button></div></article>)}</div></Card>
-          <Card title={`Observations activas (${activeObservations.length})`}><div className="list">{activeObservations.length === 0 && <p className="muted">Sin registros.</p>}{activeObservations.map((x) => <article key={x.id} className="list-item"><div className="row-between"><strong>{x.display || x.code}</strong><span className="pill">{x.code}</span></div>{x.value_type === "NUMERIC" && <span className="big-value">{x.value_numeric} {x.unit}</span>}{x.value_type === "COMPONENTS" && x.components?.map((c) => <span key={c.id}>{c.display}: <strong>{c.value_numeric} {c.unit}</strong></span>)}<div className="actions">{x.value_type === "NUMERIC" && <button onClick={() => updateObservation(x.id, x.value_numeric)}>Soft edit</button>}<button onClick={() => deleteObservation(x.id)}>Soft delete</button></div></article>)}</div></Card>
-        </div>
-
         {isAdmin && <Card title="Papelera · Solo administrador"><div className="trash-grid">
           <div><h3>Observaciones eliminadas</h3>{deletedObservations.length === 0 ? <p className="muted">Vacía</p> : deletedObservations.map((x) => <div className="trash-item" key={x.id}><span>{x.display || x.code} · {formatDate(x.deleted_at)}</span><button onClick={() => restoreObservation(x.id)}>Restaurar</button></div>)}</div>
           <div><h3>Encuentros eliminados</h3>{deletedEncounters.length === 0 ? <p className="muted">Vacía</p> : deletedEncounters.map((x) => <div className="trash-item" key={x.id}><span>{x.encounter_type} · {formatDate(x.deleted_at)}</span><button onClick={() => restoreEncounter(x.id)}>Restaurar</button></div>)}</div>
@@ -358,9 +396,11 @@ export default function App() {
           <div><h3>Usuarios eliminados</h3>{deletedUsers.length === 0 ? <p className="muted">Vacía</p> : deletedUsers.map((x) => <div className="trash-item" key={x.id}><span>{x.user_code} · {x.full_name || x.username}</span><button onClick={() => restoreUser(x.id)}>Restaurar</button></div>)}</div>
         </div></Card>}
 
-        <Corte2Panel me={me} selectedPatientId={selectedPatientId} patients={patients} users={users} onMessage={(ok, err) => { setStatusMessage(ok); setError(err); }} />
+        </div>}
 
-        <Card title="Última respuesta"><JsonBox value={lastResponse} /></Card>
+        <div hidden={actual !== "api"}>
+          <Card title="Última respuesta"><JsonBox value={lastResponse} /></Card>
+        </div>
       </main>
     </div>
   );
