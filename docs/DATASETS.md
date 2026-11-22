@@ -99,3 +99,23 @@ Se incluyen 187 de los 299 registros reales de UCI (todos reales, ninguno modifi
 ### Limitación académica
 
 El modelo y los clusters son una demostración docente. No son un dispositivo médico ni han sido validados para decisiones clínicas reales.
+
+## Corpus
+
+Base documental del RAG (Semana 12) y del agente clínico (R23). Son resúmenes docentes, en español, de guías de práctica clínica y normas pertinentes a la insuficiencia cardiaca en seguimiento rural. Están en `app/rag/corpus/` y se indexan al arrancar.
+
+| Id | Tipo | Título | Fuente |
+|---|---|---|---|
+| G01 | guia | Definición, clasificación y diagnóstico de la insuficiencia cardiaca | Resumen docente de McDonagh TA et al. 2021 ESC Guidelines for the diagnosis and treatment of acute and chronic heart failure. Eur Heart J. 2021;42:3599-3726. |
+| G02 | guia | Tratamiento farmacológico de la insuficiencia cardiaca con FEVI reducida | Resumen docente de McDonagh TA et al. 2021 ESC Guidelines for the diagnosis and treatment of acute and chronic heart failure. Eur Heart J. 2021;42:3599-3726. |
+| G03 | guia | Autocuidado, signos de alarma y descompensación | Resumen docente de Jaarsma T et al. Self-care of heart failure patients: practical management recommendations from the Heart Failure Association of the ESC. Eur J Heart Fail. 2021;23:157-174, y de las Guías ESC 2021 de insuficiencia cardiaca. |
+| G04 | guia | Función renal, síndrome cardiorrenal y potasio | Resumen docente de las Guías ESC 2021 de insuficiencia cardiaca (McDonagh TA et al., Eur Heart J. 2021;42:3599-3726) y de Chicco D, Jurman G. Machine learning can predict survival of patients with heart failure from serum creatinine and ejection fraction alone. BMC Med Inform Decis Mak. 2020;20:16. |
+| G05 | guia | Hiponatremia en insuficiencia cardiaca | Resumen docente de Gheorghiade M et al. Relationship between admission serum sodium concentration and clinical outcomes in patients hospitalized for heart failure: an analysis from the OPTIMIZE-HF registry. Eur Heart J. 2007;28:980-988, y de las Guías ESC 2021 de insuficiencia cardiaca. |
+| G06 | guia | Ecocardiografía y medición de la fracción de eyección | Resumen docente de Lang RM et al. Recommendations for cardiac chamber quantification by echocardiography in adults: an update from the ASE and the EACVI. J Am Soc Echocardiogr. 2015;28:1-39, y de Leclerc S et al. Deep learning for segmentation using an open large-scale dataset in 2D echocardiography (CAMUS). IEEE Trans Med Imaging. 2019;38:2198-2210. |
+| G07 | guia | Seguimiento, telemonitoreo y remisión al especialista | Resumen docente de McDonagh TA et al. 2021 ESC Guidelines for the diagnosis and treatment of acute and chronic heart failure. Eur Heart J. 2021;42:3599-3726. |
+| N01 | norma | Normativa colombiana sobre datos de salud e historia clínica | Resumen docente de la Ley 1581 de 2012 (protección de datos personales), la Ley 2015 de 2020 (historia clínica electrónica interoperable), la Resolución 866 de 2021 del Ministerio de Salud y Protección Social (elementos de datos clínicos para la interoperabilidad) y la Resolución 1995 de 1999 (manejo de la historia clínica). |
+| N02 | norma | Uso y limitaciones del modelo de riesgo del sistema | Documentación interna del sistema Heart Failure Monitor (docs/MODELO_ML.md y docs/DATASETS.md), Salud Digital 2026-2. |
+
+Además, por cada paciente se indexa su **historia aprobada**: ficha, observaciones, consultas y reportes de IA aprobados. Esa historia se seudonimiza antes de indexarse y solo la puede recuperar una pregunta hecha sobre ese mismo paciente. Los reportes pendientes o rechazados no entran (R10).
+
+Cómo se citan: cada respuesta de `POST /agente/chat` y de `POST /rag/preguntar` trae la lista `fuentes`, con documento, fragmento y número `[n]`. Si el RAG no supera los umbrales de similitud (coseno 0,35; BM25 4,0), el sistema se abstiene y dice que no hay evidencia (`docs/RAG.md`).
