@@ -18,3 +18,5 @@ class Referral(Base):
     fhir_service_request_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    response_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

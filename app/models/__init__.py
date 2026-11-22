@@ -12,9 +12,11 @@ from app.models.referral import Referral
 from app.models.ai_report import AIReport, MLPayload
 from app.models.alert import Alert
 from app.models.imaging_study import ImagingStudy
+from app.models.interop import Consentimiento, RemisionExterna, Socio
 
 __all__ = [
     "AuditLog", "Encounter", "Observation", "ObservationComponent", "Patient",
     "PatientAssignment", "RecordHistory", "Role", "User", "Notification",
     "Referral", "AIReport", "MLPayload", "Alert", "ImagingStudy",
+    "Socio", "Consentimiento", "RemisionExterna",
 ]
