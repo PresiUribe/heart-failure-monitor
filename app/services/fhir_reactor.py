@@ -5,6 +5,7 @@ import uuid
 from sqlalchemy import or_, select
 
 from app.database import SessionLocal
+from app.security.campos import indice_ciego
 from app.models.audit_log import AuditLog
 from app.models.patient import Patient
 from app.models.patient_assignment import PatientAssignment
@@ -53,7 +54,7 @@ async def react_to_observation(resource: dict) -> dict:
         for value in {v for v in (fhir_patient_id, subject_identifier) if v}:
             conditions += [
                 Patient.fhir_patient_id == value,
-                Patient.document_number == value,
+                Patient.document_hash == indice_ciego(value),
                 Patient.patient_code == value,
             ]
             try:

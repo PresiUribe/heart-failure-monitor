@@ -10,6 +10,8 @@ from app.models.audit_log import AuditLog
 from app.models.record_history import RecordHistory
 from app.models.user import User
 from app.schemas.audit import AuditLogResponse, RecordHistoryResponse
+from app.security.cadena import verificar
+from app.services.audit import add_audit
 
 router = APIRouter(prefix="/audit", tags=["Auditoría"])
 
@@ -30,6 +32,21 @@ def list_audit_logs(
             .limit(limit)
         )
     )
+
+
+@router.get("/verificar")
+def verificar_cadena(
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_roles("ADMIN")),
+):
+    """R28: recorre la cadena de hashes de toda la auditoría e informa si fue alterada y en qué registro."""
+    resultado = verificar(db)
+    db.rollback()
+    add_audit(db, user_id=admin.id, action="AUDITORIA_VERIFICADA", entity_type="AUDIT", entity_id=None,
+              details={"integra": resultado["integra"], "registros": resultado["registros"],
+                       "problemas": len(resultado["problemas"])})
+    db.commit()
+    return resultado
 
 
 @router.get(

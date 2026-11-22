@@ -50,3 +50,17 @@ El POST público `/fhir/Observation` pasa por un gateway de la API que la guarda
 ## Remisión → FHIR ServiceRequest
 
 Al crear una remisión, en segundo plano se publica un `ServiceRequest` (SNOMED 3457005 *Patient referral*) en HAPI ligado al `Patient` FHIR. Si HAPI no responde, la remisión local no se afecta.
+
+## Eventos externos y de seguridad (proyecto final)
+
+Usan el mismo bus, la misma persistencia y el mismo canal en vivo (WebSocket) que los eventos del Corte 2.
+
+| Evento | Disparador | Destinatario | Reacción |
+|---|---|---|---|
+| `remision_externa_recibida` | Otra institución nos remite un paciente (`POST /interop/Bundle` válido) | Especialista asignado (el de menor carga) | Bandeja + WebSocket + contador `remisiones_recibidas` + auditoría `INTEROP_REMISION_RECIBIDA` (origen externo) |
+| `remision_externa_respondida` | El socio acepta o rechaza una remisión nuestra (`POST /interop/Task`) | Médico que remitió | Bandeja + WebSocket + auditoría `INTEROP_RESPUESTA_RECIBIDA`. Un reintento idéntico no repite el aviso |
+| `interop_rechazo` | Un Bundle o Task del socio no pasa la validación (400/403/413/422) | Admin | Bandeja + WebSocket + auditoría `INTEROP_RECHAZO` (IP, client_id, problemas). Las credenciales malas y los duplicados solo se auditan |
+| `remision_rechazada` | El especialista rechaza con motivo (`POST /referrals/{id}/reject`) | Médico remitente (remisión interna) | Bandeja + WebSocket. Si la remisión vino de otra institución, el Task `rejected` le llega al socio |
+| `agente_inyeccion` | Una pregunta al agente intenta cambiar sus reglas o ampliar su acceso (R25) | Admin | Bandeja + WebSocket + auditoría `AGENTE_INYECCION` (usuario, rol, IP, patrón). Al tercer intento, bloqueo temporal |
+
+Al aceptar o rechazar una remisión externa no se emite un evento hacia nuestro médico: la respuesta viaja como `Task` FHIR al sistema socio, que avisa a su propio médico.

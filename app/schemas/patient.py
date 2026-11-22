@@ -21,8 +21,9 @@ class PatientCreate(BaseModel):
     """Alta de paciente.
 
     Acepta los nombres del Corte 1 (inglés) y nombres en español usados por
-    el tester (documento, nombre, apellido...). Correo, teléfono y dirección
-    se aceptan pero NO se persisten ni se envían a la IA (minimización, Ley 1581).
+    el tester (documento, nombre, apellido...). El correo se acepta pero NO se
+    persiste (minimización, Ley 1581). Documento, teléfono, dirección y vereda se
+    guardan cifrados con AES-256-GCM (R27) y nunca se envían a la IA ni al socio.
     """
 
     @model_validator(mode="before")
@@ -40,6 +41,8 @@ class PatientCreate(BaseModel):
             "municipality": ["municipio", "ciudad", "city"],
             "rural_area": ["vereda", "zona_rural"],
             "primary_diagnosis": ["diagnostico", "diagnostico_principal"],
+            "phone": ["telefono", "celular", "movil"],
+            "address": ["direccion", "domicilio"],
         }
         for target, keys in aliases.items():
             if d.get(target) in (None, ""):
@@ -58,11 +61,14 @@ class PatientCreate(BaseModel):
         if not d.get("document_number"):
             d["document_number"] = "AUTO-" + secrets.token_hex(5).upper()
         d["document_number"] = str(d["document_number"])
+        for campo in ("phone", "address"):
+            if d.get(campo) is not None and not isinstance(d[campo], str):
+                d[campo] = str(d[campo])
         if d.get("sex") is not None:
             d["sex"] = _SEX_MAP.get(str(d["sex"]).strip().lower(), str(d["sex"]).upper())
             if d["sex"] not in {"MALE", "FEMALE", "OTHER", "UNKNOWN"}:
                 d["sex"] = "UNKNOWN"
-        allowed = {"document_number", "first_name", "last_name", "birth_date", "sex", "municipality", "rural_area", "primary_diagnosis"}
+        allowed = {"document_number", "first_name", "last_name", "birth_date", "sex", "municipality", "rural_area", "primary_diagnosis", "phone", "address"}
         return {k: v for k, v in d.items() if k in allowed}
 
     document_number: str = Field(min_length=3, max_length=50)
@@ -73,6 +79,8 @@ class PatientCreate(BaseModel):
     municipality: str | None = Field(default=None, max_length=120)
     rural_area: str | None = Field(default=None, max_length=150)
     primary_diagnosis: str | None = Field(default=None, max_length=255)
+    phone: str | None = Field(default=None, max_length=40)      # R27: se guarda cifrado; nunca va a la IA ni al socio
+    address: str | None = Field(default=None, max_length=200)   # R27: se guarda cifrada; nunca va a la IA ni al socio
 
 
 class PatientUpdate(BaseModel):
@@ -83,6 +91,8 @@ class PatientUpdate(BaseModel):
     municipality: str | None = Field(default=None, max_length=120)
     rural_area: str | None = Field(default=None, max_length=150)
     primary_diagnosis: str | None = Field(default=None, max_length=255)
+    phone: str | None = Field(default=None, max_length=40)
+    address: str | None = Field(default=None, max_length=200)
 
 
 class PatientResponse(BaseModel):
@@ -98,6 +108,8 @@ class PatientResponse(BaseModel):
     municipality: str | None
     rural_area: str | None
     primary_diagnosis: str | None
+    phone: str | None = None
+    address: str | None = None
     fhir_patient_id: str | None
     is_active: bool
     created_at: datetime

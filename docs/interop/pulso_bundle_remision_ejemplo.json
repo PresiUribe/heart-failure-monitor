@@ -1,0 +1,390 @@
+{
+  "resourceType": "Bundle",
+  "type": "transaction",
+  "timestamp": "2026-11-22T01:21:02Z",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:b32d1d40-6c48-5b40-841f-a33d22ec4b07",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pac-411a27caabbf6e83b7abf085963c30c6",
+        "identifier": [
+          {
+            "use": "official",
+            "type": {
+              "coding": [
+                {
+                  "system": "https://pulso.hsanrafael.co/fhir/CodeSystem/tipo-documento",
+                  "code": "CC"
+                }
+              ],
+              "text": "CC"
+            },
+            "system": "https://pulso.hsanrafael.co/fhir/identifier/documento",
+            "value": "1814198961"
+          },
+          {
+            "use": "secondary",
+            "system": "https://pulso.hsanrafael.co/fhir/identifier/paciente-federado",
+            "value": "411a27caabbf6e83b7abf085963c30c6"
+          }
+        ],
+        "name": [
+          {
+            "use": "official",
+            "family": "Saliente",
+            "given": [
+              "Luis"
+            ]
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1966-01-02"
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Patient/pac-411a27caabbf6e83b7abf085963c30c6"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:b4c6f1be-c8e1-5cc6-ba2a-dff3b34f9d46",
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "rem-66",
+        "identifier": [
+          {
+            "system": "https://pulso.hsanrafael.co/fhir/identifier/remision",
+            "value": "66"
+          }
+        ],
+        "status": "active",
+        "intent": "order",
+        "priority": "stat",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "3457005",
+              "display": "Patient referral"
+            }
+          ],
+          "text": "Remisión a especialista"
+        },
+        "subject": {
+          "reference": "Patient/pac-411a27caabbf6e83b7abf085963c30c6"
+        },
+        "authoredOn": "2026-11-22T01:21:02Z",
+        "requester": {
+          "display": "Hospital San Rafael (Pulso)"
+        },
+        "reasonCode": [
+          {
+            "text": "Dolor torácico atípico; valoración por cardiología"
+          }
+        ],
+        "supportingInfo": [
+          {
+            "reference": "Observation/obs-9101"
+          },
+          {
+            "reference": "Observation/obs-9102"
+          },
+          {
+            "reference": "Observation/obs-9103"
+          },
+          {
+            "reference": "DiagnosticReport/rep-431"
+          }
+        ],
+        "performerType": {
+          "coding": [],
+          "text": "Medicina interna"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "ServiceRequest/rem-66"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:cc56d3bb-5fac-5543-81ab-050d7415c3c5",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-9101",
+        "identifier": [
+          {
+            "system": "https://pulso.hsanrafael.co/fhir/identifier/observacion",
+            "value": "9101"
+          }
+        ],
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8867-4",
+              "display": "Heart rate"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pac-411a27caabbf6e83b7abf085963c30c6"
+        },
+        "effectiveDateTime": "2026-11-21T18:40:00-05:00",
+        "valueQuantity": {
+          "value": 112.0,
+          "unit": "/min",
+          "system": "http://unitsofmeasure.org",
+          "code": "/min"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/obs-9101"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:68384d2d-2f7c-58ad-a9e1-04f282c87652",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-9102",
+        "identifier": [
+          {
+            "system": "https://pulso.hsanrafael.co/fhir/identifier/observacion",
+            "value": "9102"
+          }
+        ],
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2823-3",
+              "display": "Potassium [Moles/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pac-411a27caabbf6e83b7abf085963c30c6"
+        },
+        "effectiveDateTime": "2026-11-21T18:40:00-05:00",
+        "valueQuantity": {
+          "value": 6.4,
+          "unit": "mmol/L",
+          "system": "http://unitsofmeasure.org",
+          "code": "mmol/L"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/obs-9102"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:ef0df80a-6e82-5dae-9656-0ca495398a8f",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-9103",
+        "identifier": [
+          {
+            "system": "https://pulso.hsanrafael.co/fhir/identifier/observacion",
+            "value": "9103"
+          }
+        ],
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2160-0",
+              "display": "Creatinine [Mass/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pac-411a27caabbf6e83b7abf085963c30c6"
+        },
+        "effectiveDateTime": "2026-11-21T18:40:00-05:00",
+        "valueQuantity": {
+          "value": 2.1,
+          "unit": "mg/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/dL"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Observation/obs-9103"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:d4518c45-a869-5783-b162-df9763c50325",
+      "resource": {
+        "resourceType": "DiagnosticReport",
+        "id": "rep-431",
+        "identifier": [
+          {
+            "system": "https://pulso.hsanrafael.co/fhir/identifier/remision/reporte-ia",
+            "value": "431"
+          }
+        ],
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                "code": "OTH",
+                "display": "Other"
+              }
+            ],
+            "text": "Apoyo diagnóstico con IA"
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "11526-1",
+              "display": "Pathology study"
+            }
+          ],
+          "text": "Reporte de IA aprobado"
+        },
+        "subject": {
+          "reference": "Patient/pac-411a27caabbf6e83b7abf085963c30c6"
+        },
+        "issued": "2026-11-21T18:40:00-05:00",
+        "conclusion": "Modelo vitaldb-1: riesgo alto, probabilidad 72%. Revisión clínica: Coincide con la clínica; se remite para valoración.. Reporte revisado y APROBADO por un clínico."
+      },
+      "request": {
+        "method": "PUT",
+        "url": "DiagnosticReport/rep-431"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:928c6dec-f723-5135-aba1-c5dc25ba851e",
+      "resource": {
+        "resourceType": "Consent",
+        "id": "con-11",
+        "status": "active",
+        "scope": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/consentscope",
+              "code": "patient-privacy"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://loinc.org",
+                "code": "59284-0",
+                "display": "Patient Consent"
+              }
+            ]
+          }
+        ],
+        "patient": {
+          "reference": "Patient/pac-411a27caabbf6e83b7abf085963c30c6"
+        },
+        "dateTime": "2026-11-21T20:06:31.526514-05:00",
+        "policyRule": {
+          "text": "Ley 1581 de 2012: autorización para transferir datos a la institución destino"
+        },
+        "provision": {
+          "type": "permit",
+          "period": {
+            "start": "2026-11-21T20:06:31.526514-05:00"
+          },
+          "purpose": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-ActReason",
+              "code": "TREAT"
+            }
+          ]
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Consent/con-11"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:4a6898b9-2b00-51e9-914e-85b61f66f700",
+      "resource": {
+        "resourceType": "Task",
+        "id": "rem-66",
+        "identifier": [
+          {
+            "system": "https://pulso.hsanrafael.co/fhir/identifier/remision",
+            "value": "66"
+          }
+        ],
+        "status": "requested",
+        "intent": "order",
+        "priority": "stat",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "3457005",
+              "display": "Patient referral"
+            }
+          ]
+        },
+        "focus": {
+          "reference": "ServiceRequest/rem-66"
+        },
+        "basedOn": [
+          {
+            "reference": "ServiceRequest/rem-66"
+          }
+        ],
+        "for": {
+          "reference": "Patient/pac-411a27caabbf6e83b7abf085963c30c6"
+        },
+        "authoredOn": "2026-11-22T01:21:02Z",
+        "requester": {
+          "display": "Hospital San Rafael (Pulso)"
+        }
+      },
+      "request": {
+        "method": "PUT",
+        "url": "Task/rem-66"
+      }
+    }
+  ]
+}

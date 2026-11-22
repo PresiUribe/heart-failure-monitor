@@ -1,4 +1,4 @@
-# Heart Failure Rural Monitoring — Corte 2
+# Heart Failure Rural Monitoring — Proyecto final
 ## Integrantes
 
 | Integrante | Responsabilidad |
@@ -8,7 +8,7 @@
 | Emilio Marquez | IA: modelo supervisado, clustering con aumento sintético, seudonimización y PACS (CAMUS) |
 | Juan Pablo López | Frontend: SPA React, canal WebSocket, alertas persistentes y paneles por rol |
 
-Salud Digital 2026-2 · Proyecto 2 (Corte 2)
+Salud Digital 2026-2 · Proyecto final (Corte 2 + semanas 12 a 15: RAG, agente clínico, seguridad STRIDE e interoperabilidad entre instituciones)
 
 Sistema académico de Salud Digital orientado al seguimiento de **insuficiencia cardiaca**. La versión 2 conserva la base del Corte 1 (PostgreSQL, FastAPI, JWT, HAPI FHIR, soft delete, auditoría y frontend React) e incorpora PACS, dataset real, aprendizaje supervisado, clustering, MongoDB, remisiones y comportamiento reactivo en tiempo real.
 
@@ -19,20 +19,26 @@ Sistema académico de Salud Digital orientado al seguimiento de **insuficiencia 
 ```mermaid
 flowchart TB
     U[Navegador / evaluador] --> CF[Cloudflare Quick Tunnel HTTPS]
-    CF --> NX[Frontend React + Nginx]
-    NX -->|/api| API[FastAPI]
-    NX -->|/fhir| FHIR[HAPI FHIR R4]
+    SOC[Sistema socio · otra institución] -->|Bundle / Task FHIR + token de sistema| CF
+    CF --> NX[Frontend React + Nginx<br/>rate limit · CSP · FHIR público solo lectura]
+    NX -->|/api| API[FastAPI<br/>JWT + RBAC · OAuth2 de socios · auditoría encadenada]
+    NX -->|/fhir GET| FHIR[HAPI FHIR R4]
 
-    API --> PG[(PostgreSQL clínico)]
+    API --> PG[(PostgreSQL clínico<br/>campos cifrados AES-GCM · pgvector)]
     API --> MONGO[(MongoDB facturación)]
-    API --> ML[Servicio ML]
+    API --> ML[Servicio ML<br/>riesgo · clusters · embeddings]
     API --> PACS[Orthanc PACS]
+    API --> AG[Agente clínico<br/>harness LangGraph + RAG]
+    AG -->|solo seudónimo PSN-| LLM[Groq LLM]
+    API -->|Bundle / Task FHIR + credencial del socio| SOC
     FHIR --> HPG[(PostgreSQL HAPI)]
-    FHIR -->|Subscription REST-hook| API
+    FHIR -->|Subscription REST-hook + secreto| API
 
     ML --> UCI[UCI Heart Failure real + clusters]
     PACS --> CAMUS[Ecocardiografía CAMUS real]
 ```
+
+Fronteras de confianza, amenazas y controles: `docs/STRIDE.md`.
 
 ## Diagrama de eventos
 
@@ -40,7 +46,7 @@ flowchart TB
 flowchart LR
     A[Médico remite] --> B[Notificación especialista]
     B --> C[WebSocket especialista]
-    D[Especialista acepta] --> E[Notificación médico]
+    D[Especialista acepta o rechaza] --> E[Notificación médico]
     F[Clínico aprueba IA] --> G[Factura MongoDB]
     G --> H[Notificación contable]
     I[3 fallos login] --> J[Bloqueo]
@@ -49,7 +55,38 @@ flowchart LR
     M -->|sin reconocer| N[Escalamiento admin]
     O[Observation en HAPI] --> P[Subscription]
     P --> Q[Notificación clínico]
+    R[Socio nos remite] --> S[remision_externa_recibida<br/>especialista + contador]
+    T[Socio responde Task] --> V[remision_externa_respondida<br/>médico]
+    W[Bundle inválido del socio] --> X[interop_rechazo<br/>admin]
+    Y[Prompt injection al agente] --> Z[agente_inyeccion<br/>admin + bloqueo temporal]
 ```
+
+## Intercambio con el sistema socio
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant M as Médico (nosotros)
+  participant A as Heart Failure Monitor
+  participant B as Institución socia
+  participant E as Especialista (socio)
+  M->>A: Remitir (Consent para ESA institución + reporte de IA aprobado)
+  A->>B: POST /oauth/token (client_credentials)
+  B-->>A: access_token (10 min)
+  A->>B: POST /interop/Bundle (Patient, ServiceRequest, Observation LOINC, DiagnosticReport, Consent, Task)
+  alt inválido
+    B-->>A: 422 OperationOutcome (nada se guarda)
+  else válido
+    B-->>A: 201 Task requested
+    B--)E: aviso en vivo + contador
+    E->>B: acepta o rechaza con motivo
+    B->>A: POST /interop/Task (accepted | rejected)
+    A--)M: aviso en vivo
+  end
+  Note over A,B: Los dos lados auditan con origen externo. En sentido contrario el flujo es el mismo.
+```
+
+Contrato común con los demás equipos (el mismo de Pulso), rutas, credenciales y cómo conectar un socio: `docs/INTEROPERABILIDAD.md`.
 
 ## Servicios Docker
 
@@ -147,9 +184,20 @@ python scripts/e2e_check.py --base https://xxxxx.trycloudflare.com/api --fhir ht
 
 Requiere `pip install httpx websockets`. El script reproduce los chequeos del tester (roles, bloqueo, seguridad, canal en vivo, IA con aprobación, factura automática, remisión, alertas, FHIR reactivo, auditoría y rate limit) e imprime `OK`/`FALLA` por requisito. Crea un usuario auxiliar `bloqueo.demo` para R02.
 
+### 7. Verificación del proyecto final (R23–R33)
+
+```powershell
+python scripts/test_interop.py                                   # R29–R33: 53 verificaciones (socios de prueba que apuntan a nosotros)
+docker compose exec api python scripts/test_seguridad.py         # R27–R28: 21 verificaciones (revisa también PostgreSQL)
+python scripts/test_agente_seguridad.py                          # R23–R25: 18 verificaciones
+python scripts/agente_check.py --base http://localhost:5173/api  # agente de la Semana 13
+```
+
+Antes del primer arranque de esta versión, defina `CAMPOS_CLAVE` y `AUDITORIA_CLAVE` en `.env` (vea `.env.example`). Si ya había arrancado sin ellas, rote con `scripts/rotar_clave_campos.py` y `scripts/rotar_clave_auditoria.py`.
+
 ## Interoperabilidad FHIR reactiva
 
-El mecanismo estándar sigue siendo una `Subscription` R4 tipo `rest-hook` creada automáticamente en HAPI. Como respaldo determinista para la prueba externa de R21, el `POST /fhir/Observation` público entra por Nginx a un gateway de FastAPI: FastAPI reenvía la Observation a HAPI y dispara el mismo reactor de notificación **sin polling**. El resto de rutas `/fhir/*` van directamente a HAPI. La deduplicación por id del recurso evita notificar dos veces si el rest-hook también llega.
+El mecanismo estándar sigue siendo una `Subscription` R4 tipo `rest-hook` creada automáticamente en HAPI. Como respaldo determinista para la prueba externa de R21, el `POST /fhir/Observation` público entra por Nginx a un gateway de FastAPI: FastAPI reenvía la Observation a HAPI y dispara el mismo reactor de notificación **sin polling**. El resto de rutas `/fhir/*` van a HAPI **solo en lectura** (GET); `/fhir/Patient` exige `identifier` para no listar pacientes. La deduplicación por id del recurso evita notificar dos veces si el rest-hook también llega.
 
 ## Seguridad
 
@@ -161,8 +209,13 @@ El mecanismo estándar sigue siendo una `Subscription` R4 tipo `rest-hook` cread
 - `X-Content-Type-Options` y `X-Frame-Options`;
 - rate limiting en FastAPI y Nginx;
 - webhook FHIR protegido mediante secreto interno enviado por la Subscription;
-- datos personales no se envían al servicio ML;
-- `.env` excluido del repositorio.
+- datos personales no se envían al servicio ML ni al LLM (payload del agente auditado);
+- documento, teléfono, dirección y vereda cifrados con AES-256-GCM en PostgreSQL (R27);
+- auditoría encadenada con HMAC, de solo agregar, verificable por el admin (R28);
+- credenciales de sistema por institución para los socios, que no abren la API clínica (R29, R31);
+- defensa contra prompt injection con registro de usuario e IP y bloqueo temporal (R25);
+- FHIR público solo de lectura y con búsqueda por identificador;
+- `.env` excluido del repositorio. Modelo de amenazas completo: `docs/STRIDE.md`.
 
 ## Datasets
 
@@ -171,7 +224,11 @@ El mecanismo estándar sigue siendo una `Subscription` R4 tipo `rest-hook` cread
 
 Detalles y licencias: `docs/DATASETS.md`.
 
-## Documentación Corte 2
+## Documentación
+
+- `docs/STRIDE.md` — modelo de amenazas (R26).
+- `docs/INTEROPERABILIDAD.md` — contrato con las instituciones socias (R29–R33).
+- `docs/AGENTE.md` y `docs/RAG.md` — agente clínico, harness y RAG (R23–R25).
 
 - `docs/CORTE2_REQUISITOS.md` — mapa R01–R22.
 - `docs/DATASETS.md` — datasets y clustering.

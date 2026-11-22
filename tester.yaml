@@ -9,8 +9,8 @@
 #   contable_crear: {paciente_id, servicio, valor}
 # Ajustar los nombres de campos al archivo plantilla_equipo.yaml
 # oficial si el docente entrega una versión con estructura adicional.
-base_url: "https://given-carbon-advertising-brunette.trycloudflare.com"
-fhir_base_url: "https://given-carbon-advertising-brunette.trycloudflare.com/fhir"
+base_url: "REEMPLAZAR_CON_URL_TRYCLOUDFLARE"
+fhir_base_url: "REEMPLAZAR_CON_URL_TRYCLOUDFLARE/fhir"
 
 usuarios:
   admin: {username: "admin.demo", password: "AdminDemo2026!"}
@@ -50,10 +50,33 @@ rutas:
   soft_delete: {method: DELETE, path: "/api/patients/{paciente_id}"}
   restaurar: {method: POST, path: "/api/patients/{paciente_id}/restore"}
   fhir_paciente: {method: GET, path: "/fhir/Patient?identifier={documento}"}
+  # RAG clínico (Semana 12): body {pregunta, paciente_id (opcional)}; solo medico y especialista.
+  rag_preguntar: {method: POST, path: "/api/rag/preguntar"}
+  # Agente clínico (Semana 13): body {mensaje, conversacion_id, paciente_id (opcional)}; medico y especialista.
+  agente_chat: {method: POST, path: "/api/agente/chat"}
+  # body {conversacion_id, decision: approve|reject, motivo}; solo medico.
+  agente_decidir: {method: POST, path: "/api/agente/decidir"}
   # Canal en tiempo real: WebSocket (los Quick Tunnels de Cloudflare no soportan SSE).
   tiempo_real: {method: GET, path: "/api/events/ws?token={token}", tipo: websocket}
   # Alternativa SSE (funciona en local / túnel con nombre):
   tiempo_real_sse: {method: GET, path: "/api/events/stream?token={token}", tipo: sse}
+  # Interoperabilidad entre instituciones (proyecto final, R29–R33). Contrato: docs/INTEROPERABILIDAD.md
+  # Entrada de socios (credencial de sistema, nunca un usuario): token OAuth2 client_credentials o X-API-Key.
+  interop_metadata: {method: GET, path: "/api/interop/metadata"}
+  interop_token: {method: POST, path: "/api/oauth/token"}
+  interop_bundle: {method: POST, path: "/api/interop/Bundle"}
+  interop_task: {method: POST, path: "/api/interop/Task"}
+  interop_task_estado: {method: GET, path: "/api/interop/Task/{task_id}"}
+  # Lado clínico: body {institucion, nota}; luego body {paciente_id, institucion, motivo, prioridad, especialidad}; solo medico.
+  consentimiento: {method: POST, path: "/api/patients/{paciente_id}/consentimientos"}
+  remitir_externa: {method: POST, path: "/api/remisiones/externas"}
+  remisiones_externas: {method: GET, path: "/api/remisiones/externas"}
+  # body {motivo}; especialista. Si la remisión vino de otra institución, el Task de respuesta le llega solo.
+  remision_rechazar: {method: POST, path: "/api/referrals/{remision_id}/reject"}
+  # Seguridad (R27, R28, R25): solo admin.
+  auditoria_verificar: {method: GET, path: "/api/audit/verificar"}
+  agente_incidentes: {method: GET, path: "/api/agente/incidentes"}
+  agente_desbloquear: {method: POST, path: "/api/agente/desbloquear"}
 
 paciente_critico:
   age: 72
@@ -68,11 +91,3 @@ paciente_critico:
   sex: 1
   smoking: 0
   time: 30
-
-
-# Canal en tiempo real declarado también como sección propia (R17).
-tiempo_real:
-  tipo: websocket
-  ruta: "/api/events/ws?token={token}"
-  path: "/api/events/ws?token={token}"
-  espera_segundos: 8

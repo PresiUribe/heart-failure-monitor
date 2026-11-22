@@ -184,11 +184,34 @@ def build():
     (ART/"metrics.json").write_text(json.dumps(metrics,indent=2),encoding="utf-8")
     (ART/"cluster_summary.json").write_text(json.dumps(cluster_summary,indent=2,ensure_ascii=False),encoding="utf-8")
 
+# ---------- Embeddings para el RAG (Semana 12) ----------
+EMBED_MODEL=os.getenv("EMBED_MODEL","sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+_embedder=None
+
+def get_embedder():
+    global _embedder
+    if _embedder is None:
+        from sentence_transformers import SentenceTransformer
+        _embedder=SentenceTransformer(EMBED_MODEL, device="cpu")
+    return _embedder
+
+class EmbedInput(BaseModel):
+    textos: list[str]
+
+@app.post("/embed")
+def embed(body: EmbedInput):
+    if not body.textos or len(body.textos)>256: raise HTTPException(422,"Entre 1 y 256 textos por llamada")
+    vec=get_embedder().encode([t[:2000] for t in body.textos], normalize_embeddings=True, batch_size=32)
+    return {"modelo":EMBED_MODEL,"dim":int(vec.shape[1]),"vectores":vec.astype(float).round(6).tolist()}
+
 @app.on_event("startup")
-def startup(): build()
+def startup():
+    build()
+    try: get_embedder()   # se carga al arrancar para que la primera pregunta no espere
+    except Exception as exc: print("Embeddings no disponibles:", exc)
 
 @app.get("/health")
-def health(): return {"status":"ok","model_ready":model is not None}
+def health(): return {"status":"ok","model_ready":model is not None,"embeddings_ready":_embedder is not None}
 
 @app.get("/clusters")
 def clusters(): return cluster_summary

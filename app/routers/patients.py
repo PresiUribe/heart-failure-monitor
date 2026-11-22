@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies.auth import require_roles
+from app.security.campos import indice_ciego
 from app.models.patient import Patient
 from app.models.patient_assignment import PatientAssignment
 from app.models.user import User
@@ -39,7 +40,7 @@ def create_patient(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("ADMIN", "MEDICO")),
 ):
-    existing = db.scalar(select(Patient).where(Patient.document_number == payload.document_number))
+    existing = db.scalar(select(Patient).where(Patient.document_hash == indice_ciego(payload.document_number)))
     if existing is not None:
         raise HTTPException(status_code=409, detail="Ya existe un paciente con ese documento")
 
@@ -63,7 +64,7 @@ def create_patient(
         action="CREATE",
         entity_type="PATIENT",
         entity_id=patient.id,
-        details={"patient_code": patient.patient_code, "document_number": patient.document_number},
+        details={"patient_code": patient.patient_code},  # R27: el documento no viaja a la auditoría
     )
     db.commit()
     db.refresh(patient)
